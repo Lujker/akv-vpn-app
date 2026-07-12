@@ -1,6 +1,6 @@
 {
   "common": {
-    "appTitle": "Hiddify",
+    "appTitle": "AKV VPN",
     "start": "Начать",
     "version": "Версия",
     "ok": "OK",
@@ -642,6 +642,40 @@
     "warp": {
       "missingLicense": "Отсутствует лицензия Warp",
       "missingLicenseMsg": "Выбранный профиль использует функцию WARP; для использования этой функции необходимо принять лицензию WARP."
+    }
+  },
+  "akv": {
+    "account": {
+      "title": "Аккаунт AKV",
+      "loginTitle": "Вход в AKV VPN",
+      "registerTitle": "Регистрация в AKV VPN",
+      "serverUrl": "Адрес сервера",
+      "serverUrlHint": "vpn.example.com",
+      "email": "Email",
+      "password": "Пароль",
+      "login": "Войти",
+      "register": "Создать аккаунт",
+      "toRegister": "Нет аккаунта? Зарегистрироваться",
+      "toLogin": "Уже есть аккаунт? Войти",
+      "logout": "Выйти",
+      "loggedIn": "Вход выполнен",
+      "subscriptions": "Мои подписки",
+      "noSubscriptions": "Нет активных подписок. Купите подписку в Telegram-боте AKV VPN или на сайте и обновите список.",
+      "useSubscription": "Использовать эту подписку",
+      "refresh": "Обновить",
+      "expires": "Действует до",
+      "unlimitedTraffic": "Безлимитный трафик",
+      "devices": "Устройств",
+      "errors": {
+        "invalidCredentials": "Неверный email или пароль.",
+        "emailTaken": "Этот email уже зарегистрирован.",
+        "rateLimited": "Слишком много попыток. Попробуйте через несколько минут.",
+        "network": "Не удалось связаться с сервером. Проверьте адрес и подключение.",
+        "server": "Ошибка сервера.",
+        "serverRequired": "Укажите адрес сервера.",
+        "emailInvalid": "Введите корректный email.",
+        "passwordTooShort": "Пароль должен быть не короче 8 символов."
+      }
     }
   }
 }

@@ -1,7 +1,8 @@
+# Dart package is still named `hiddify` (renaming touches every import; deferred, see docs/private/AKV_CHANGES_RU.md §1.2).
 name: hiddify
-description: Cross Platform Multi Protocol Proxy Frontend.
+description: AKV VPN — official cross platform client for the AKV VPN service.
 publish_to: "none"
-version: 4.1.2+40102
+version: 1.0.0+1
 
 environment:
   sdk: ^3.10.4

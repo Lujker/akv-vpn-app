@@ -7,6 +7,7 @@ import 'package:hiddify/core/router/go_router/helper/active_breakpoint_notifier.
 import 'package:hiddify/core/router/go_router/helper/custom_transition.dart';
 import 'package:hiddify/core/router/go_router/refresh_listenable.dart';
 import 'package:hiddify/features/about/widget/about_page.dart';
+import 'package:hiddify/features/akv_account/widget/akv_account_page.dart';
 import 'package:hiddify/features/home/widget/home_page.dart';
 import 'package:hiddify/features/intro/widget/intro_page.dart';
 import 'package:hiddify/features/log/overview/logs_page.dart';
@@ -162,6 +163,12 @@ class RoutingConfigNotifier extends _$RoutingConfigNotifier {
                     ),
                   ),
                   routes: <GoRoute>[
+                    GoRoute(
+                      name: 'akvAccount',
+                      path: '/akv-account',
+                      pageBuilder: (_, state) =>
+                          customTransition(TransitionType.slide, state.pageKey, const AkvAccountPage()),
+                    ),
                     GoRoute(
                       name: 'general',
                       path: '/general',

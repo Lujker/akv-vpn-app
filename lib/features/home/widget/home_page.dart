@@ -1,6 +1,7 @@
 import 'package:dartx/dartx.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hiddify/core/app_info/app_info_provider.dart';
 import 'package:hiddify/core/localization/translations.dart';
 import 'package:hiddify/core/router/bottom_sheets/bottom_sheets_notifier.dart';
@@ -48,6 +49,15 @@ class HomePage extends HookConsumerWidget {
           ],
         ),
         actions: [
+          Semantics(
+            key: const ValueKey("akv_account_button"),
+            label: t.akv.account.title,
+            child: IconButton(
+              icon: Icon(Icons.account_circle_rounded, color: theme.colorScheme.primary),
+              onPressed: () => context.goNamed('akvAccount'),
+            ),
+          ),
+          const Gap(8),
           // IconButton(
           //     onPressed: () => const QuickSettingsRoute().push(context),
           //     icon: const Icon(FluentIcons.options_24_filled),

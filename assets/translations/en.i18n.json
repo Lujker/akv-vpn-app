@@ -1,6 +1,6 @@
 {
   "common": {
-    "appTitle": "Hiddify",
+    "appTitle": "AKV VPN",
     "start": "Start",
     "version": "Version",
     "ok": "OK",
@@ -641,6 +641,40 @@
     "warp": {
       "missingLicense": "Warp license",
       "missingLicenseMsg": "The selected profile uses the WARP feature; to use this feature, the WARP license must be agreed to."
+    }
+  },
+  "akv": {
+    "account": {
+      "title": "AKV account",
+      "loginTitle": "Sign in to AKV VPN",
+      "registerTitle": "Create an AKV VPN account",
+      "serverUrl": "Server address",
+      "serverUrlHint": "vpn.example.com",
+      "email": "Email",
+      "password": "Password",
+      "login": "Sign in",
+      "register": "Create account",
+      "toRegister": "No account yet? Create one",
+      "toLogin": "Already have an account? Sign in",
+      "logout": "Sign out",
+      "loggedIn": "Signed in",
+      "subscriptions": "My subscriptions",
+      "noSubscriptions": "No active subscriptions. Buy a subscription in the AKV VPN Telegram bot or on the website, then refresh this list.",
+      "useSubscription": "Use this subscription",
+      "refresh": "Refresh",
+      "expires": "Valid until",
+      "unlimitedTraffic": "Unlimited traffic",
+      "devices": "Devices",
+      "errors": {
+        "invalidCredentials": "Wrong email or password.",
+        "emailTaken": "This email is already registered.",
+        "rateLimited": "Too many attempts. Try again in a few minutes.",
+        "network": "Could not reach the server. Check the address and your connection.",
+        "server": "Server error.",
+        "serverRequired": "Enter the server address.",
+        "emailInvalid": "Enter a valid email.",
+        "passwordTooShort": "Password must be at least 8 characters."
+      }
     }
   }
 }

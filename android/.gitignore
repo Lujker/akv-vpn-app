@@ -16,3 +16,6 @@ key.properties
 !/app/libs/.gitkeep
 
 /app/.cxx
+
+# Kotlin tooling cache (created by AGP/Kotlin 2.x builds)
+/.kotlin/

@@ -21,7 +21,7 @@ abstract class LinkParser {
   }
 
   // protocols schemas
-  static const protocols = ['hiddify', 'v2ray', 'v2rayn', 'v2rayng', 'clash', 'clashmeta', 'sing-box'];
+  static const protocols = ['akvvpn'];
 
   static ProfileLink? parse(String link) {
     return simple(link) ?? deep(link);
@@ -38,14 +38,12 @@ abstract class LinkParser {
     if (uri == null || !uri.hasScheme || !uri.hasAuthority) return null;
     final queryParams = uri.queryParameters;
     switch (uri.scheme) {
-      case 'hiddify':
+      case 'akvvpn':
         if (queryParams.containsKey('url')) {
           return (url: queryParams['url']!, name: queryParams['name'] ?? '');
         } else {
           return (url: uri.path.substring(1) + (uri.hasQuery ? "?${uri.query}" : ""), name: uri.fragment);
         }
-      case 'v2ray' || 'v2rayn' || 'v2rayng' || 'clash' || 'clashmeta' || 'sing-box':
-        return queryParams.containsKey('url') ? (url: queryParams['url']!, name: queryParams['name'] ?? '') : null;
       default:
         return null;
     }

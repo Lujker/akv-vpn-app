@@ -142,6 +142,11 @@ class SettingsPage extends HookConsumerWidget {
         children: [
           // TipCard(message: t.settings.experimentalMsg),
           SettingsSection(
+            title: t.akv.account.title,
+            icon: Icons.account_circle_rounded,
+            namedLocation: context.namedLocation('akvAccount'),
+          ),
+          SettingsSection(
             title: t.pages.settings.general.title,
             icon: Icons.layers_rounded,
             namedLocation: context.namedLocation('general'),
