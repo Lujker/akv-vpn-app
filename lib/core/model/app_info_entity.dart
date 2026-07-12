@@ -17,7 +17,9 @@ class AppInfoEntity with _$AppInfoEntity {
     required Environment environment,
   }) = _AppInfoEntity;
 
-  String get userAgent => "HiddifyNext/$version ($operatingSystem) like ClashMeta v2ray sing-box";
+  // AKV: fixed UA contract with the controller — it detects "akvvpn" and
+  // serves the base64 URI-list subscription format (see CLIENT_APP_PLAN §5.8).
+  String get userAgent => "AKVVPN/$version ($operatingSystem; $operatingSystemVersion)";
 
   String get presentVersion => environment == Environment.prod ? version : "$version ${environment.name}";
 

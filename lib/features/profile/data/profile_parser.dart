@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dartx/dartx.dart';
 import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:hiddify/core/app_info/hwid_provider.dart';
 import 'package:hiddify/core/db/db.dart';
 import 'package:hiddify/core/http_client/dio_http_client.dart';
 import 'package:hiddify/features/profile/data/profile_data_mapper.dart';
@@ -149,6 +150,9 @@ class ProfileParser {
     // if (url.startsWith("http://"))
     //   throw const ProfileFailure.invalidUrl('HTTP is not supported. Please use HTTPS for secure connection.');
 
+    // AKV controller requires a stable device id on every subscription fetch
+    // (missing header -> 400 hwid_required).
+    final hwid = await _ref.read(hwidProvider.future);
     final rs = await _httpClient
         .download(
           url.trim(),
@@ -157,6 +161,7 @@ class ProfileParser {
           userAgent: _ref.read(ConfigOptions.useXrayCoreWhenPossible)
               ? _httpClient.userAgent.replaceAll("HiddifyNext", "HiddifyNextX")
               : null,
+          headers: {"x-hwid": hwid},
         )
         .catchError((err) {
           if (CancelToken.isCancel(err as DioException)) {
@@ -164,6 +169,13 @@ class ProfileParser {
           }
           throw err;
         });
+    // AKV controller signals "subscription expired" / "device limit exceeded"
+    // with HTTP 200, an EMPTY body and a banner in announce/profile-title
+    // headers (see CLIENT_APP_PLAN §5.8). An empty config must not reach the
+    // core (it would fail to start with no outbounds) — surface the banner.
+    if ((await File(tempFilePath).readAsString()).trim().isEmpty) {
+      throw ProfileFailure.invalidConfig(extractBannerMessage(rs.headers.map) ?? "empty subscription body");
+    }
     await expandRemoteLinesInParallel(
       tempFilePath: tempFilePath,
       httpClient: _httpClient,
@@ -176,6 +188,24 @@ class ProfileParser {
       return MapEntry(key, value);
     });
   }, (err, st) => err is ProfileFailure ? err : ProfileFailure.unexpected(err, st));
+
+  /// Banner text from AKV controller headers (`announce` has priority over
+  /// `profile-title`); values may be wrapped as `base64:<utf8 b64>`.
+  @visibleForTesting
+  static String? extractBannerMessage(Map<String, List<String>> headers) {
+    for (final key in ["announce", "profile-title"]) {
+      var value = headers[key]?.firstOrNull ?? "";
+      if (value.startsWith("base64:")) {
+        try {
+          value = utf8.decode(base64.decode(value.substring("base64:".length)));
+        } catch (_) {
+          continue;
+        }
+      }
+      if (value.trim().isNotEmpty) return value.trim();
+    }
+    return null;
+  }
   Future<void> expandRemoteLinesInParallel({
     required String tempFilePath,
     required DioHttpClient httpClient,

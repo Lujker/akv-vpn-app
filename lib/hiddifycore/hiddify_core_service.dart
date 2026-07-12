@@ -143,7 +143,9 @@ class HiddifyCoreService with InfraLogger {
       final background = await core.setupBackground(path, name);
       if (background != const CoreStatus.started()) {
         statusController.add(currentState = const CoreStatus.stopped());
-        return left(background.getCoreAlert() ?? const ConnectionFailure.unexpected("failed to start core"));
+        // AKV: keep the raw status message — generic text hides the real cause.
+        final detail = background is CoreStopped ? " ${background.message ?? ""}".trimRight() : "";
+        return left(background.getCoreAlert() ?? ConnectionFailure.unexpected("failed to start core$detail"));
       }
       if (!core.isSingleChannel()) {
         await startListeningLogs("bg", core.bgClient);
@@ -192,7 +194,8 @@ class HiddifyCoreService with InfraLogger {
         // throw DioException.connectionError(requestOptions: RequestOptions(), reason: e.codeName, error: e);
 
         // throw DioException(requestOptions: RequestOptions(), error: e);
-        return left(const ConnectionFailure.unexpected("failed to start background core"));
+        // AKV: surface the actual gRPC failure instead of a generic message.
+        return left(ConnectionFailure.unexpected("failed to start background core: ${e.codeName} ${e.message ?? ""}"));
       }
 
       // if (res.messageType != MessageType.EMPTY) return left(res);
