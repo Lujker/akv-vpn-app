@@ -140,68 +140,79 @@ class HiddifyCoreService with InfraLogger {
     return TaskEither(() async {
       statusController.add(currentState = const CoreStatus.starting());
       loggy.debug("starting");
-      final background = await core.setupBackground(path, name);
-      if (background != const CoreStatus.started()) {
+      // AKV: a cold Android VpnService reports its gRPC port ready before the
+      // OS has finished establishing the tunnel, so the first bgClient.start()
+      // can fail with a transient "configure tun interface: permission denied"
+      // (upstream hiddify-app#2047). setupBackground() stops+restarts the
+      // service, so retrying the whole sequence once succeeds — this is exactly
+      // what a manual second tap does. Only the tun-establish failure is retried.
+      const maxAttempts = 2;
+      for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+        final (failure, transientTun) = await _startOnce(path, name, disableMemoryLimit);
+        if (failure == null) return right(unit);
+        if (attempt < maxAttempts && transientTun) {
+          loggy.warning("bg core start hit transient tun failure (attempt $attempt/$maxAttempts), retrying");
+          await stop().run();
+          await Future.delayed(const Duration(milliseconds: 800));
+          continue;
+        }
         statusController.add(currentState = const CoreStatus.stopped());
-        // AKV: keep the raw status message — generic text hides the real cause.
-        final detail = background is CoreStopped ? " ${background.message ?? ""}".trimRight() : "";
-        return left(background.getCoreAlert() ?? ConnectionFailure.unexpected("failed to start core$detail"));
+        return left(failure);
       }
-      if (!core.isSingleChannel()) {
-        await startListeningLogs("bg", core.bgClient);
-        await startListeningStatus("bg", core.bgClient);
-      }
-      // if (latestOptions != null) {
-      //   await core.bgClient.changeHiddifySettings(
-      //     ChangeHiddifySettingsRequest(
-      //       hiddifySettingsJson: jsonEncode(latestOptions!.toJson()),
-      //     ),
-      //   );
-      // }
-      // final content = await File(path).readAsString();
-      // loggy.debug("starting with content: $content");
-      try {
-        final res = await core.bgClient.start(
-          StartRequest(
-            configPath: path,
-            configName: name,
-            // configContent: content,
-            disableMemoryLimit: disableMemoryLimit,
-          ),
-        );
-        ref.read(coreRestartSignalProvider.notifier).restart();
-        if (res.messageType != MessageType.ALREADY_STARTED && res.messageType != MessageType.EMPTY) {
-          final alert = res.message.contains("denied") ? CoreAlert.requestVPNPermission : CoreAlert.startFailed;
-          currentState = CoreStatus.stopped(
-            alert: alert,
-            message: "failed to start core ${res.messageType} ${res.message}",
-          );
-
-          statusController.add(currentState);
-
-          return left(
-            currentState.getCoreAlert() ??
-                ConnectionFailure.unexpected("failed to start core ${res.messageType} ${res.message}"),
-          );
-        }
-      } on GrpcError catch (e) {
-        loggy.error("failed to start bg core: $e");
-        ref.read(coreRestartSignalProvider.notifier).restart();
-        if (e.code == StatusCode.unavailable) {
-          return left(const ConnectionFailure.unexpected("background core is not started yet!"));
-        }
-        // throw InvalidConfig(e.message);
-        // throw DioException.connectionError(requestOptions: RequestOptions(), reason: e.codeName, error: e);
-
-        // throw DioException(requestOptions: RequestOptions(), error: e);
-        // AKV: surface the actual gRPC failure instead of a generic message.
-        return left(ConnectionFailure.unexpected("failed to start background core: ${e.codeName} ${e.message ?? ""}"));
-      }
-
-      // if (res.messageType != MessageType.EMPTY) return left(res);
-
-      return right(unit);
+      statusController.add(currentState = const CoreStatus.stopped());
+      return left(const ConnectionFailure.unexpected("failed to start core"));
     });
+  }
+
+  /// One start attempt. Returns `(null, _)` on success, or `(failure, transientTun)`
+  /// where `transientTun` marks the retryable cold-VpnService tun-establish race.
+  Future<(ConnectionFailure?, bool)> _startOnce(String path, String name, bool disableMemoryLimit) async {
+    final background = await core.setupBackground(path, name);
+    if (background != const CoreStatus.started()) {
+      // AKV: keep the raw status message — generic text hides the real cause.
+      final detail = background is CoreStopped ? " ${background.message ?? ""}".trimRight() : "";
+      final msg = "failed to start core$detail";
+      return (background.getCoreAlert() ?? ConnectionFailure.unexpected(msg), _isTransientTunFailure(detail));
+    }
+    if (!core.isSingleChannel()) {
+      await startListeningLogs("bg", core.bgClient);
+      await startListeningStatus("bg", core.bgClient);
+    }
+    try {
+      final res = await core.bgClient.start(
+        StartRequest(
+          configPath: path,
+          configName: name,
+          disableMemoryLimit: disableMemoryLimit,
+        ),
+      );
+      ref.read(coreRestartSignalProvider.notifier).restart();
+      if (res.messageType != MessageType.ALREADY_STARTED && res.messageType != MessageType.EMPTY) {
+        final alert = res.message.contains("denied") ? CoreAlert.requestVPNPermission : CoreAlert.startFailed;
+        final msg = "failed to start core ${res.messageType} ${res.message}";
+        currentState = CoreStatus.stopped(alert: alert, message: msg);
+        return (currentState.getCoreAlert() ?? ConnectionFailure.unexpected(msg), _isTransientTunFailure(res.message));
+      }
+    } on GrpcError catch (e) {
+      loggy.error("failed to start bg core: $e");
+      ref.read(coreRestartSignalProvider.notifier).restart();
+      if (e.code == StatusCode.unavailable) {
+        return (const ConnectionFailure.unexpected("background core is not started yet!"), true);
+      }
+      // AKV: surface the actual gRPC failure instead of a generic message.
+      final msg = e.message ?? "";
+      return (
+        ConnectionFailure.unexpected("failed to start background core: ${e.codeName} $msg"),
+        _isTransientTunFailure(msg),
+      );
+    }
+    return (null, false);
+  }
+
+  /// True for the transient cold-start TUN establish failure that succeeds on retry.
+  static bool _isTransientTunFailure(String message) {
+    final m = message.toLowerCase();
+    return m.contains("configure tun interface") || (m.contains("tun") && m.contains("permission denied"));
   }
 
   TaskEither<String, Unit> stop() {

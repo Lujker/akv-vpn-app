@@ -1,4 +1,7 @@
 
+# AKV: local-only planning/change docs — never commit
+docs/private/
+
 # Miscellaneous
 *.class
 *.log

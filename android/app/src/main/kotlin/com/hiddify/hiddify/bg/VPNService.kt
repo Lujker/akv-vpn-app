@@ -207,9 +207,30 @@ class VPNService : VpnService(), PlatformInterfaceWrapper {
             systemProxyEnabled = false
         }
 
-        val pfd = builder.establish() ?: error("android: the application is not prepared or is revoked")
-        service.fileDescriptor = pfd
-        return pfd.fd
+        // AKV: on a cold VpnService start, establish() can transiently throw
+        // SecurityException("permission denied") or return null before the OS has
+        // finished promoting this service to the active VPN. That is the root of
+        // "first connect fails, second succeeds" (upstream hiddify-app#2047):
+        // the existing loop above only re-checks prepare(), not establish() itself.
+        // Retry establish() a few times so the first connection comes up cleanly,
+        // instead of surfacing "configure tun interface: permission denied".
+        var pfd: ParcelFileDescriptor? = null
+        var lastError: Throwable? = null
+        for (i in 0 until 10) {
+            try {
+                pfd = builder.establish()
+                if (pfd != null) break
+                Log.w(TAG, "establish() returned null (attempt ${i + 1}), retrying")
+            } catch (e: Exception) {
+                lastError = e
+                Log.w(TAG, "establish() failed (attempt ${i + 1}): ${e.message}")
+            }
+            Thread.sleep(200)
+        }
+        val fd = pfd
+            ?: error("android: the application is not prepared or is revoked" + (lastError?.message?.let { ": $it" } ?: ""))
+        service.fileDescriptor = fd
+        return fd.fd
     }
 
 //    override fun writeLog(message: String) = service.writeLog(message)
