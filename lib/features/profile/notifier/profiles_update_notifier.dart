@@ -1,7 +1,6 @@
 import 'package:dartx/dartx.dart';
 import 'package:hiddify/core/localization/translations.dart';
 import 'package:hiddify/core/notification/in_app_notification_controller.dart';
-import 'package:hiddify/core/preferences/general_preferences.dart';
 import 'package:hiddify/core/preferences/preferences_provider.dart';
 import 'package:hiddify/features/profile/data/profile_data_providers.dart';
 import 'package:hiddify/features/profile/model/profile_entity.dart';
@@ -37,12 +36,7 @@ class ForegroundProfilesUpdateNotifier extends _$ForegroundProfilesUpdateNotifie
       _scheduler = null;
     });
 
-    if (ref.watch(Preferences.introCompleted)) {
-      loggy.debug("intro done, starting");
-      _scheduler?.start();
-    } else {
-      loggy.debug("intro in process, skipping");
-    }
+    _scheduler?.start();
     return const Stream.empty();
   }
 

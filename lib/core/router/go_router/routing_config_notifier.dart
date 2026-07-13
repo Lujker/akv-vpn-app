@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hiddify/core/preferences/general_preferences.dart';
 import 'package:hiddify/core/router/adaptive_layout/my_adaptive_layout.dart';
 import 'package:hiddify/core/router/bottom_sheets/bottom_sheets_notifier.dart';
 import 'package:hiddify/core/router/go_router/helper/active_breakpoint_notifier.dart';
@@ -9,7 +8,6 @@ import 'package:hiddify/core/router/go_router/refresh_listenable.dart';
 import 'package:hiddify/features/about/widget/about_page.dart';
 import 'package:hiddify/features/akv_account/widget/akv_account_page.dart';
 import 'package:hiddify/features/home/widget/home_page.dart';
-import 'package:hiddify/features/intro/widget/intro_page.dart';
 import 'package:hiddify/features/log/overview/logs_page.dart';
 import 'package:hiddify/features/per_app_proxy/overview/per_app_proxy_page.dart';
 import 'package:hiddify/features/profile/details/profile_details_page.dart';
@@ -64,8 +62,6 @@ class RoutingConfigNotifier extends _$RoutingConfigNotifier {
     if (isMobileBreakpoint == null) return loadingConfig;
     return RoutingConfig(
       redirect: (context, state) {
-        final introCompleted = ref.read(Preferences.introCompleted);
-        final isIntro = state.matchedLocation == '/intro';
         // fix path-parameters for deep link
         String? url;
         if (LinkParser.protocols.contains(state.uri.scheme)) {
@@ -77,15 +73,7 @@ class RoutingConfigNotifier extends _$RoutingConfigNotifier {
           url = state.uri.queryParameters['url'];
         }
 
-        if (!introCompleted) {
-          return url != null ? '/intro?url=$url' : '/intro';
-        } else if (isIntro) {
-          if (url != null)
-            WidgetsBinding.instance.addPostFrameCallback(
-              (_) => ref.read(bottomSheetsNotifierProvider.notifier).showAddProfile(url: url),
-            );
-          return '/home';
-        } else if (url != null) {
+        if (url != null) {
           WidgetsBinding.instance.addPostFrameCallback(
             (_) => ref.read(bottomSheetsNotifierProvider.notifier).showAddProfile(url: url),
           );
@@ -253,7 +241,6 @@ class RoutingConfigNotifier extends _$RoutingConfigNotifier {
             ],
           ],
         ),
-        GoRoute(name: 'intro', path: '/intro', builder: (_, _) => const IntroPage()),
       ],
     );
   }
