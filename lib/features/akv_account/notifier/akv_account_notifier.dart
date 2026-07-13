@@ -1,6 +1,7 @@
 import 'package:hiddify/core/app_info/app_info_provider.dart';
 import 'package:hiddify/core/preferences/preferences_provider.dart';
 import 'package:hiddify/features/akv_account/data/akv_api_client.dart';
+import 'package:hiddify/features/akv_account/data/akv_servers.dart';
 import 'package:hiddify/features/akv_account/model/akv_account_models.dart';
 import 'package:hiddify/utils/custom_loggers.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -8,21 +9,22 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'akv_account_notifier.g.dart';
 
-// Compile-time default for the controller address (see docs/private/BUILD_RU.md):
-// flutter build ... --dart-define=AKV_API_BASE_URL=https://<host>
-const _defaultServerUrl = String.fromEnvironment('AKV_API_BASE_URL');
-
-const _serverUrlPrefKey = "akv_server_url";
-// TODO(akv, Phase 2): move the token (and HWID) to flutter_secure_storage.
+// TODO(akv, Phase 2): move the session token (and HWID) to flutter_secure_storage.
 const _tokenPrefKey = "akv_token";
 const _emailPrefKey = "akv_email";
 const _userUuidPrefKey = "akv_user_uuid";
+const _lastWorkingServerPrefKey = "akv_last_working_server";
 
-/// Persisted controller address as entered by the user (may be a bare host).
+/// Server addresses are baked into the build (`akv_servers.dart`) — the user
+/// never enters one. The client remembers which mirror last answered and
+/// tries it first, then falls back through the rest of the list.
 @Riverpod(keepAlive: true)
-Future<String> akvServerUrl(Ref ref) async {
+Future<List<String>> akvServerBaseUrls(Ref ref) async {
   final prefs = await ref.watch(sharedPreferencesProvider.future);
-  return prefs.getString(_serverUrlPrefKey) ?? _defaultServerUrl;
+  final candidates = akvServerCandidates();
+  final lastWorking = prefs.getString(_lastWorkingServerPrefKey);
+  if (lastWorking == null) return candidates;
+  return [lastWorking, ...candidates.where((c) => AkvApiClient.normalizeBaseUrl(c) != lastWorking)];
 }
 
 /// Logged-in AKV account (null — signed out). Session token is persisted so
@@ -43,21 +45,17 @@ class AkvAccountNotifier extends _$AkvAccountNotifier with AppLogger {
   }
 
   Future<AkvApiClient> _client() async {
-    final serverUrl = await ref.read(akvServerUrlProvider.future);
+    final candidates = await ref.read(akvServerBaseUrlsProvider.future);
     final appInfo = await ref.read(appInfoProvider.future);
-    return AkvApiClient(baseUrl: AkvApiClient.normalizeBaseUrl(serverUrl), userAgent: appInfo.userAgent);
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    return AkvApiClient(
+      baseUrls: candidates,
+      userAgent: appInfo.userAgent,
+      onBaseUrlSelected: (baseUrl) => prefs.setString(_lastWorkingServerPrefKey, baseUrl),
+    );
   }
 
-  Future<void> signIn({
-    required String serverUrl,
-    required String email,
-    required String password,
-    bool registerNewAccount = false,
-  }) async {
-    final prefs = await ref.read(sharedPreferencesProvider.future);
-    await prefs.setString(_serverUrlPrefKey, serverUrl.trim());
-    ref.invalidate(akvServerUrlProvider);
-
+  Future<void> signIn({required String email, required String password, bool registerNewAccount = false}) async {
     final appInfo = await ref.read(appInfoProvider.future);
     final client = await _client();
     final deviceName = "${appInfo.operatingSystem} ${appInfo.operatingSystemVersion}";
@@ -75,6 +73,7 @@ class AkvAccountNotifier extends _$AkvAccountNotifier with AppLogger {
             deviceName: deviceName,
             platform: appInfo.operatingSystem,
           );
+    final prefs = await ref.read(sharedPreferencesProvider.future);
     await prefs.setString(_tokenPrefKey, account.token);
     await prefs.setString(_emailPrefKey, account.email);
     await prefs.setString(_userUuidPrefKey, account.userUuid);
@@ -102,13 +101,18 @@ class AkvAccountNotifier extends _$AkvAccountNotifier with AppLogger {
 Future<AkvSubscriptionsBuckets> akvSubscriptions(Ref ref) async {
   final account = await ref.watch(akvAccountNotifierProvider.future);
   if (account == null) return const AkvSubscriptionsBuckets(active: [], inactive: []);
-  final serverUrl = await ref.watch(akvServerUrlProvider.future);
+  final candidates = await ref.watch(akvServerBaseUrlsProvider.future);
   final appInfo = await ref.watch(appInfoProvider.future);
-  final client = AkvApiClient(baseUrl: AkvApiClient.normalizeBaseUrl(serverUrl), userAgent: appInfo.userAgent);
+  final prefs = await ref.watch(sharedPreferencesProvider.future);
+  final client = AkvApiClient(
+    baseUrls: candidates,
+    userAgent: appInfo.userAgent,
+    onBaseUrlSelected: (baseUrl) => prefs.setString(_lastWorkingServerPrefKey, baseUrl),
+  );
   try {
     return await client.subscriptions(account.token);
   } on AkvApiException catch (e) {
-    if (e.code == AkvApiErrorCode.invalidCredentials || e.code == AkvApiErrorCode.unauthorized) {
+    if (e.code == AkvApiErrorCode.invalidCredentials) {
       // Session revoked on the server — drop the stale local session.
       await ref.read(akvAccountNotifierProvider.notifier).signOut();
       return const AkvSubscriptionsBuckets(active: [], inactive: []);

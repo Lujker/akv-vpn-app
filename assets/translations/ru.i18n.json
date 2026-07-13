@@ -649,8 +649,6 @@
       "title": "Аккаунт AKV",
       "loginTitle": "Вход в AKV VPN",
       "registerTitle": "Регистрация в AKV VPN",
-      "serverUrl": "Адрес сервера",
-      "serverUrlHint": "vpn.example.com",
       "email": "Email",
       "password": "Пароль",
       "login": "Войти",
@@ -672,7 +670,6 @@
         "rateLimited": "Слишком много попыток. Попробуйте через несколько минут.",
         "network": "Не удалось связаться с сервером. Проверьте адрес и подключение.",
         "server": "Ошибка сервера.",
-        "serverRequired": "Укажите адрес сервера.",
         "emailInvalid": "Введите корректный email.",
         "passwordTooShort": "Пароль должен быть не короче 8 символов."
       }

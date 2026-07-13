@@ -50,10 +50,7 @@ class _SignInForm extends HookConsumerWidget {
     final t = ref.watch(translationsProvider).requireValue;
     final theme = Theme.of(context);
 
-    final savedServerUrl = ref.watch(akvServerUrlProvider).valueOrNull ?? "";
     final formKey = useMemoized(() => GlobalKey<FormState>());
-    // keyed by the saved value: prefs may resolve after the first frame
-    final serverController = useTextEditingController(text: savedServerUrl, keys: [savedServerUrl]);
     final emailController = useTextEditingController();
     final passwordController = useTextEditingController();
     final isRegister = useState(false);
@@ -69,7 +66,6 @@ class _SignInForm extends HookConsumerWidget {
         await ref
             .read(akvAccountNotifierProvider.notifier)
             .signIn(
-              serverUrl: serverController.text,
               email: emailController.text.trim(),
               password: passwordController.text,
               registerNewAccount: isRegister.value,
@@ -100,18 +96,6 @@ class _SignInForm extends HookConsumerWidget {
               key: formKey,
               child: Column(
                 children: [
-                  TextFormField(
-                    controller: serverController,
-                    keyboardType: TextInputType.url,
-                    autocorrect: false,
-                    decoration: InputDecoration(
-                      labelText: t.akv.account.serverUrl,
-                      hintText: t.akv.account.serverUrlHint,
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: (value) => (value == null || value.trim().isEmpty) ? t.akv.account.errors.serverRequired : null,
-                  ),
-                  const Gap(16),
                   TextFormField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
